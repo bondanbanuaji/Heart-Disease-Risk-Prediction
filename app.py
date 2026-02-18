@@ -1,263 +1,265 @@
 import streamlit as st
 import pickle
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.tree import plot_tree
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import seaborn as sns
-import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.tree import plot_tree
 
-# Set page config for better UI
+# --- Page Configuration ---
 st.set_page_config(
-    page_title="Heart Disease Risk Predictor",
+    page_title="HeartRisk AI | Dark Mode",
     page_icon="❤️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Load model
+# --- Constants & Config ---
+MODEL_PATH = 'C45_pinjam_mod.pkl'
+
+# Fixed mappings based on DecisionTree_231351030.ipynb LabelEncoder.classes_
+LABEL_ENCODINGS = {
+    'Age': {'Senior': 1, 'Middle-aged': 0, 'Young': 2},
+    'Cholesterol Level': {'High': 0, 'Low': 1, 'Normal': 2},
+    'Blood Pressure': {'High': 0, 'Low': 1, 'Normal': 2},
+    'Smoking': {'Yes': 1, 'No': 0},
+    'Physical Activity': {'High': 0, 'Low': 1, 'Moderate': 2},
+    'BMI': {'Normal': 0, 'Obese': 1, 'Overweight': 2},
+}
+
+# --- Load Model ---
 @st.cache_resource
 def load_model():
-    model_path = 'C45_pinjam_mod.pkl'
-    with open(model_path, 'rb') as model_file:
-        return pickle.load(model_file)
+    try:
+        with open(MODEL_PATH, 'rb') as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        st.error(f"Model file not found at {MODEL_PATH}")
+        return None
 
-loaded_model = load_model()
-
-# Custom CSS for enhanced UI
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        text-align: center;
-        color: #2c3e50;
-        padding: 20px 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    .prediction-card {
-        background: linear-gradient(145deg, #667eea, #764ba2);
-        padding: 20px;
-        border-radius: 15px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        margin: 20px 0;
-    }
-    .risk-high { background: linear-gradient(145deg, #e74c3c, #c0392b); }
-    .risk-medium { background: linear-gradient(145deg, #f39c12, #d35400); }
-    .risk-low { background: linear-gradient(145deg, #27ae60, #2ecc71); }
-    .feature-card {
-        background: white;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        margin: 10px 0;
-        border-left: 5px solid #3498db;
-    }
-    .sidebar .css-1d391kg {
-        padding-top: 2rem;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Header with animation effect
-st.markdown('<h1 class="main-header">❤️ Advanced Heart Disease Risk Predictor</h1>', unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center; color: #7f8c8d; margin-bottom: 30px;'>Using C4.5 Decision Tree Algorithm with Interactive 3D Visualizations</h3>", unsafe_allow_html=True)
-
-# Create tabs for better organization
-tab1, tab2, tab3 = st.tabs(["🏠 Dashboard", "📊 Analysis", "📈 Model Insights"])
-
-with tab1:
-    # Feature input section with enhanced UI
-    st.markdown("### 🏥 Patient Information")
-
-    # Create columns for better layout
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        age = st.selectbox('👤 Age Group', ('Senior', 'Middle-aged', 'Young'), help="Select your age group")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        cholesterol = st.selectbox('💉 Cholesterol Level', ('High', 'Normal', 'Low'), help="Select your cholesterol level")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col2:
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        blood_pressure = st.selectbox('🩸 Blood Pressure', ('High', 'Normal', 'Low'), help="Select your blood pressure level")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        smoking = st.selectbox('🚬 Smoking Habit', ('Yes', 'No'), help="Do you smoke?")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col3:
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        physical_activity = st.selectbox('🏃 Physical Activity', ('Low', 'Moderate', 'High'), help="Select your physical activity level")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        bmi = st.selectbox('⚖️ BMI Category', ('Overweight', 'Normal', 'Obese'), help="Select your BMI category")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # Create a mapping for the labels to numbers (as per how the model was trained)
-    label_encodings = {
-        'Age': {'Senior': 1, 'Middle-aged': 0, 'Young': 2},
-        'Cholesterol Level': {'High': 0, 'Normal': 1, 'Low': 2},
-        'Blood Pressure': {'High': 0, 'Normal': 1, 'Low': 2},
-        'Smoking': {'Yes': 1, 'No': 0},
-        'Physical Activity': {'Low': 0, 'Moderate': 1, 'High': 2},
-        'BMI': {'Overweight': 1, 'Normal': 0, 'Obese': 2},
-    }
-
-    # Encode the input data
-    new_data = np.array([
-        label_encodings['Age'][age],
-        label_encodings['Cholesterol Level'][cholesterol],
-        label_encodings['Blood Pressure'][blood_pressure],
-        label_encodings['Smoking'][smoking],
-        label_encodings['Physical Activity'][physical_activity],
-        label_encodings['BMI'][bmi],
-    ]).reshape(1, -1)
-
-    # Risk assessment button with animation effect
-    st.markdown("### 🎯 Risk Assessment")
-    if st.button("🔮 Predict Risk Level", type="primary", use_container_width=True):
-        with st.spinner('Analyzing your health data... 🧪'):
-            prediction = loaded_model.predict(new_data)
-            prediction_proba = loaded_model.predict_proba(new_data) if hasattr(loaded_model, 'predict_proba') else None
-
-            risk_mapping = {0: 'High Risk', 1: 'Low Risk', 2: 'Medium Risk'}
-            risk_colors = {0: 'risk-high', 1: 'risk-low', 2: 'risk-medium'}
-
-            predicted_risk = risk_mapping[prediction[0]]
-            risk_color = risk_colors[prediction[0]]
-
-            # Display prediction with animated card
-            st.markdown(f"""
-            <div class="prediction-card {risk_color}">
-                <h2>📊 Prediction Result</h2>
-                <h1>❤️ {predicted_risk}</h1>
-                <p style="font-size: 1.2em;">Based on your health parameters</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Display probability if available
-            if prediction_proba is not None:
-                prob_score = prediction_proba[0][prediction[0]]
-                st.progress(float(prob_score))
-                st.markdown(f"**Confidence Score:** {prob_score:.2%}")
-
-with tab2:
-    st.markdown("### 📊 Health Parameter Analysis")
-
-    # Create a DataFrame for visualization
-    features = ['Age', 'Cholesterol', 'Blood Pressure', 'Smoking', 'Physical Activity', 'BMI']
-    values = [age, cholesterol, blood_pressure, smoking, physical_activity, bmi]
-
-    df = pd.DataFrame({
-        'Feature': features,
-        'Value': values,
-        'Risk_Factor': [1 if v in ['High', 'Yes', 'Low', 'Overweight', 'Obese'] else 0.5 if v in ['Normal'] else 0
-                       for v in values]  # Simplified risk factor calculation
-    })
-
-    # Create interactive Plotly chart
-    fig = px.bar(df, x='Feature', y='Risk_Factor', color='Value',
-                 title='Health Parameter Risk Assessment',
-                 color_discrete_sequence=px.colors.qualitative.Set3)
-    fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Create radar chart for health parameters
-    fig2 = go.Figure()
-
-    # Normalize values for radar chart
-    norm_values = []
-    for val in values:
-        if val in ['High', 'Yes', 'Low', 'Overweight', 'Obese']:
-            norm_values.append(1)
-        elif val in ['Normal']:
-            norm_values.append(0.5)
-        else:
-            norm_values.append(0)
-
-    fig2.add_trace(go.Scatterpolar(
-        r=norm_values + [norm_values[0]],  # Close the loop
-        theta=features + [features[0]],
-        fill='toself',
-        name='Health Parameters'
-    ))
-
-    fig2.update_layout(
-        polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[0, 1]
-            )),
-        showlegend=False,
-        title="Health Parameters Radar Chart"
-    )
-
-    st.plotly_chart(fig2, use_container_width=True)
-
-with tab3:
-    st.markdown("### 🌳 Decision Tree Visualization")
-
-    # Create an interactive decision tree visualization
+# --- UI Helper Functions ---
+def inject_custom_css():
     st.markdown("""
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-        <h4>🔍 Model Insights</h4>
-        <p>The C4.5 Decision Tree algorithm analyzes your health parameters to predict heart disease risk.</p>
-        <ul>
-            <li><strong>Age:</strong> Senior patients have higher risk factors</li>
-            <li><strong>Cholesterol:</strong> High levels increase risk significantly</li>
-            <li><strong>Blood Pressure:</strong> High BP is a major risk factor</li>
-            <li><strong>Smoking:</strong> Increases heart disease risk substantially</li>
-            <li><strong>Physical Activity:</strong> Regular exercise reduces risk</li>
-            <li><strong>BMI:</strong> Overweight/obese conditions increase risk</li>
-        </ul>
-    </div>
+    <style>
+        /* Base Dark Theme (Slate 950) */
+        .stApp {
+            background-color: #020617;
+            color: #f8fafc;
+        }
+        
+        /* Typography */
+        h1, h2, h3, h4, p, label, .stMarkdown {
+            color: #f8fafc !important;
+        }
+
+        .main-header {
+            font-size: 3.5rem;
+            font-weight: 800;
+            text-align: center;
+            padding: 2.5rem 0;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0;
+            letter-spacing: -0.05em;
+        }
+        
+        .sub-header {
+            text-align: center;
+            color: #94a3b8 !important;
+            font-size: 1.25rem;
+            margin-bottom: 3.5rem;
+            font-weight: 400;
+        }
+
+        /* Glassmorphism Cards - High Contrast for Dark Mode */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.5); /* Slate 800 with opacity */
+            backdrop-filter: blur(16px);
+            border-radius: 24px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            margin-bottom: 24px;
+        }
+
+        /* Dynamic Prediction Result Cards */
+        .prediction-card {
+            padding: 48px;
+            border-radius: 32px;
+            color: white !important;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            margin: 24px 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .prediction-card:hover { 
+            transform: scale(1.02); 
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+        .prediction-card h1 { color: white !important; }
+        
+        .risk-high { background: linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%); }
+        .risk-medium { background: linear-gradient(135deg, #78350f 0%, #f59e0b 100%); }
+        .risk-low { background: linear-gradient(135deg, #064e3b 0%, #10b981 100%); }
+        
+        /* Selectbox & Input Overrides for Dark Visibility */
+        .stSelectbox label {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+            color: #cbd5e1 !important;
+        }
+        
+        /* Premium Button */
+        div.stButton > button:first-child {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+            color: white;
+            padding: 18px 36px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            width: 100%;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        div.stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Sidebar Styling */
+        .css-1d391kg {
+            background-color: #0f172a;
+        }
+
+        /* Chart Tooltips Fix */
+        .plotly-notifier {
+            display: none;
+        }
+    </style>
     """, unsafe_allow_html=True)
 
-    # Display the decision tree
-    if st.button("Show Decision Tree Visualization"):
-        fig = plt.figure(figsize=(15, 10))
-        plot_tree(loaded_model,
-            feature_names=[
-                'Age',
-                'Cholesterol Level',
-                'Blood Pressure',
-                'Smoking',
-                'Physical Activity',
-                'BMI',
-            ],
-            class_names=[
-                'High Risk',
-                'Low Risk',
-                'Medium Risk',
-            ],
-            filled=True,
-            rounded=True,
-            fontsize=10
-        )
-        plt.title("Heart Disease Risk Decision Tree", fontsize=16, fontweight='bold')
-        st.pyplot(fig)
-        plt.close()
+def display_dashboard(model):
+    st.markdown("### 🧬 Biological & Lifestyle Markers")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        age = st.selectbox('👤 Age Category', list(LABEL_ENCODINGS['Age'].keys()))
+        cholesterol = st.selectbox('💉 HDL/LDL Ratio', list(LABEL_ENCODINGS['Cholesterol Level'].keys()))
+        st.markdown('</div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        bp = st.selectbox('🩸 Blood Pressure (Sys/Dia)', list(LABEL_ENCODINGS['Blood Pressure'].keys()))
+        smoking = st.selectbox('🚬 Tobacco Usage', list(LABEL_ENCODINGS['Smoking'].keys()))
+        st.markdown('</div>', unsafe_allow_html=True)
+    with col3:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        activity = st.selectbox('🏃 Daily Activity Level', list(LABEL_ENCODINGS['Physical Activity'].keys()))
+        bmi = st.selectbox('⚖️ Body Mass Index (BMI)', list(LABEL_ENCODINGS['BMI'].keys()))
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# Footer with additional information
-st.markdown("---")
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.info("💡 **Tip:** Regular exercise can reduce heart disease risk by up to 35%")
-with col2:
-    st.warning("⚠️ **Note:** This prediction is for informational purposes only")
-with col3:
-    st.success("❤️ **Fact:** Healthy lifestyle choices can prevent 80% of heart diseases")
+    input_data = np.array([
+        LABEL_ENCODINGS['Age'][age],
+        LABEL_ENCODINGS['Cholesterol Level'][cholesterol],
+        LABEL_ENCODINGS['Blood Pressure'][bp],
+        LABEL_ENCODINGS['Smoking'][smoking],
+        LABEL_ENCODINGS['Physical Activity'][activity],
+        LABEL_ENCODINGS['BMI'][bmi],
+    ]).reshape(1, -1)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🔮 INITIALIZE AI ANALYSIS"):
+        with st.spinner('Accessing Neural Model...'):
+            prediction = model.predict(input_data)[0]
+            risk_mapping = {0: 'Critical - High Risk', 2: 'Elevated - Medium Risk', 1: 'Safe - Low Risk'}
+            risk_classes = {0: 'risk-high', 2: 'risk-medium', 1: 'risk-low'}
+            st.markdown(f'<div class="prediction-card {risk_classes[prediction]}"><p style="margin:0; text-transform:uppercase; font-weight:700; letter-spacing:0.1em; opacity:0.8;">Detection Status</p><h1>{risk_mapping[prediction]}</h1></div>', unsafe_allow_html=True)
+
+    return {'Age': age, 'Cholesterol': cholesterol, 'BP': bp, 'Smoking': smoking, 'Activity': activity, 'BMI': bmi}
+
+def display_analysis(data):
+    st.markdown("### 📊 Parameter Intensity Vector")
+    risk_scores = {'High': 1.0, 'Obese': 1.0, 'Low': 1.0, 'Yes': 1.0, 'Senior': 1.0, 'Moderate': 0.5, 'Overweight': 0.7, 'Middle-aged': 0.5, 'Normal': 0.2, 'Young': 0.1, 'No': 0.0}
+    
+    df = pd.DataFrame({
+        'Parameter': list(data.keys()), 
+        'Risk Intensity': [risk_scores.get(v, 0.5) for v in data.values()]
+    })
+    
+    # Dark Mode Bar Chart
+    fig = px.bar(df, x='Parameter', y='Risk Intensity', color='Risk Intensity', 
+                 color_continuous_scale='RdYlGn_r', range_y=[0, 1.1],
+                 template='plotly_dark')
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)', 
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color="#f8fafc"),
+        margin=dict(t=50, b=50, l=50, r=50)
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Dark Mode Radar Chart
+    fig_polar = go.Figure(data=go.Scatterpolar(
+        r=df['Risk Intensity'].tolist() + [df['Risk Intensity'].iloc[0]],
+        theta=df['Parameter'].tolist() + [df['Parameter'].iloc[0]],
+        fill='toself',
+        fillcolor='rgba(59, 130, 246, 0.3)',
+        line=dict(color='#60a5fa', width=3)
+    ))
+    fig_polar.update_layout(
+        template='plotly_dark',
+        polar=dict(
+            bgcolor='rgba(0,0,0,0)',
+            radialaxis=dict(visible=True, range=[0, 1], gridcolor='#334155')
+        ),
+        showlegend=False, 
+        paper_bgcolor='rgba(0,0,0,0)',
+        title="Cardio-Risk Fingerprint"
+    )
+    st.plotly_chart(fig_polar, use_container_width=True)
+
+def display_insights(model):
+    st.markdown("### 🧠 Symbolic AI Transparency")
+    st.write("Understand how the **C4.5 Optimized Decision Tree** processed your specific telemetry data.")
+    
+    if st.checkbox("Reveal Branch Logic Architecture"):
+        # Custom Matplotlib style for Dark Mode
+        plt.style.use('dark_background')
+        fig, ax = plt.subplots(figsize=(24, 12), dpi=100)
+        plot_tree(model, 
+                 feature_names=list(LABEL_ENCODINGS.keys()), 
+                 class_names=['High Risk', 'Low Risk', 'Medium Risk'], 
+                 filled=True, rounded=True, 
+                 fontsize=11, proportion=True, precision=2)
+        
+        # Make the plot frame transparent
+        fig.patch.set_facecolor('none')
+        ax.set_facecolor('none')
+        st.pyplot(fig)
+
+def main():
+    inject_custom_css()
+    st.markdown('<h1 class="main-header">HeartRisk AI</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Premium Machine Learning Protocol for Cardiovascular Diagnostics</p>', unsafe_allow_html=True)
+    
+    model = load_model()
+    if model is None: return
+    
+    tab1, tab2, tab3 = st.tabs(["⚡ Diagnostic Portal", "📡 Telemetry Data", "⚙️ Core Protocol"])
+    with tab1: user_data = display_dashboard(model)
+    with tab2: display_analysis(user_data)
+    with tab3: display_insights(model)
+    
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown('---')
+    st.markdown('<div style="text-align: center; color: #475569; font-size: 0.85rem; letter-spacing: 0.1em;">© 2026 HEARTWISE CLINICAL SYSTEMS | SECURE PROTOCOL</div>', unsafe_allow_html=True)
+
+if __name__ == '__main__':
+    main()

@@ -1,82 +1,61 @@
 # ❤️ Advanced Heart Disease Risk Predictor using C4.5 Decision Tree
 
 This project implements an advanced C4.5 decision tree model to predict the risk of heart disease based on several health-related features. The model is trained on the `heart.csv` dataset and deployed as a modern, interactive web application using Streamlit with enhanced visualizations and user experience.
+# ❤️ HeartWise AI: Advanced Risk Predictor
 
-## ✨ Features
+HeartWise AI is a premium, machine-learning-powered application designed to assess cardiovascular risk factors. Utilizing a **C4.5 Decision Tree algorithm**, it provides users with personalized health insights through a modern, responsive interface.
 
-- **Intuitive Dashboard**: Modern UI with tab-based navigation
-- **Interactive Visualizations**: Plotly charts for comprehensive data analysis
-- **Risk Assessment**: Color-coded risk levels with confidence scores
-- **Model Insights**: Detailed information about the decision tree model
-- **Responsive Design**: Works on both desktop and mobile devices
-- **Real-time Predictions**: Instant results based on user inputs
+## 🌟 Key Features
 
-## 📁 Project Structure
+- **AI-Powered Prediction**: Accurate risk assessment based on key health parameters.
+- **Glassmorphism UI**: A stunning, modern interface with smooth gradients and glass-like components.
+- **Interactive Visualizations**: Real-time health fingerprinting via Plotly radar and bar charts.
+- **Model Transparency**: Explore the underlying Decision Tree logic directly in the app.
+- **Modular Codebase**: Refactored logic for high maintainability and performance.
 
+## 🛠️ Technology Stack
+
+- **Core**: Python
+- **Framework**: Streamlit
+- **ML Engine**: Scikit-learn (C4.5 Decision Tree)
+- **Data Viz**: Plotly, Matplotlib, Seaborn
+- **Data Processing**: Pandas, Numpy
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+- Python 3.8 or higher.
+
+### 2. Setup
+Clone the repository, create a virtual environment, and install dependencies:
+```bash
+git clone https://github.com/bondanbanuaji/Heart-Disease-Risk-Prediction.git
+cd Heart-Disease-Risk-Prediction
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
-├── DecisionTree_231351030.ipynb     # Jupyter Notebook with model training & evaluation
-├── heart.csv                        # Dataset for model training
-├── app.py                          # Enhanced Streamlit web application
-├── C45_pinjam_mod.pkl              # Saved trained decision tree model
-├── README.md                       # Project documentation
-└── LICENSE                         # Project license
+
+### 3. Run Application
+Ensure your virtual environment is active:
+```bash
+streamlit run app.py
 ```
 
-## 🚀 Getting Started
+## 📂 Project Structure
 
-### Prerequisites
+- `app.py`: Main application logic with modular UI components.
+- `heart.csv`: Dataset used for training and logic verification.
+- `C45_pinjam_mod.pkl`: Pre-trained C4.5 Decision Tree model.
+- `requirements.txt`: Project dependencies.
+- `DecisionTree_231351030.ipynb`: Detailed notebook of the training process.
 
-- Python 3.7 or higher
-- Pip (Python package installer)
+## 🔬 Model Information
 
-### Installation
+The core of the application is a C4.5 Decision Tree. This model was chosen for its interpretability, allowing both clinicians and patients to understand the "why" behind every prediction. Key features include Age, Cholesterol, Blood Pressure, Smoking Habits, Physical Activity, and BMI.
 
-1. **Clone the repository or download the project files.**
-
-2. **Install the required Python libraries:**
-
-    ```bash
-    pip install streamlit pandas scikit-learn matplotlib plotly seaborn numpy
-    ```
-
-### Running the Application
-
-1. **Ensure you have the `C45_pinjam_mod.pkl` model file in the same directory as `app.py`.**
-
-2. **Run the Streamlit application from your terminal:**
-
-    ```bash
-    streamlit run app.py
-    ```
-
-3. **Open your web browser and navigate to the local URL provided by Streamlit (usually `http://localhost:8501`).**
-
-## 🎯 How to Use the App
-
-The web application provides an intuitive interface to get a heart disease risk prediction.
-
-### Dashboard Tab
-1. **Select your health parameters** from the intuitive form:
-   - 👤 Age Group (Senior, Middle-aged, Young)
-   - 💉 Cholesterol Level (High, Normal, Low)
-   - 🩸 Blood Pressure (High, Normal, Low)
-   - 🚬 Smoking Habit (Yes, No)
-   - 🏃 Physical Activity (Low, Moderate, High)
-   - ⚖️ BMI Category (Overweight, Normal, Obese)
-
-2. **Click the "🔮 Predict Risk Level" button**
-
-3. **View the prediction result** with animated cards showing risk level
-
-### Analysis Tab
-- **Interactive Bar Chart**: Visualizes risk factors for each parameter
-- **Radar Chart**: Comprehensive view of all health parameters
-- **Probability Scores**: Confidence levels for predictions
-
-### Model Insights Tab
-- **Decision Tree Visualization**: Interactive tree structure
-- **Feature Importance**: Understanding key risk factors
-- **Educational Content**: Information about heart disease risk factors
+---
+**Disclaimer**: HeartWise AI is for informational and educational purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.
 
 ## 📊 Model Information
 
